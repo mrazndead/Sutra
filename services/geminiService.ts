@@ -1,12 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Position, Difficulty, Category, ClimaxGoal } from "../types";
 
-const generateId = () => `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+// --- CONFIGURATION ---
+// REPLACE THE STRING BELOW WITH YOUR ACTUAL GEMINI API KEY
+const API_KEY = "AIzaSyDH8KwQgU3k1qsPcObsy38eHq4pP7jaUZ4"; 
+// ---------------------
+
+cconstonst generateId = () => `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export const generatePositionImage = async (name: string, baseDescription: string): Promise<string | null> => {
-  if (!process.env.API_KEY) return null;
+  if (!API_KEY || API_KEY.includes("INSERT_YOUR")) {
+    console.error("Please insert your API Key in services/geminiService.ts");
+    return null;
+  }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   // Use a very simple, direct prompt to match the app's new "Doctor/Vector" style
   const imagePrompt = `
@@ -36,12 +44,12 @@ export const generatePositionImage = async (name: string, baseDescription: strin
 };
 
 export const suggestPosition = async (mood: string, currentPositions: Position[]): Promise<Position | null> => {
-  if (!process.env.API_KEY) {
-    console.error("API Key missing");
+  if (!API_KEY || API_KEY.includes("INSERT_YOUR")) {
+    console.error("Please insert your API Key in services/geminiService.ts");
     return null;
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const existingNames = currentPositions.map(p => p.name).join(", ");
 
   const textPrompt = `
