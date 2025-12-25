@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Position, Difficulty, Category, ClimaxGoal } from './types';
 import { INITIAL_POSITIONS } from './constants';
+import { PositionArt } from './components/PositionArt';
+import { Oracle } from './components/Oracle';
 
 // --- Types ---
 type AppState = 'SETUP' | 'ACTIVE' | 'COMPLETION';
@@ -26,7 +28,9 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 const SetupScreen: React.FC<{
   onStart: (filters: Filters) => void;
-}> = ({ onStart }) => {
+  currentPositions: Position[];
+  onNewPosition: (p: Position) => void;
+}> = ({ onStart, currentPositions, onNewPosition }) => {
   const [selectedCats, setSelectedCats] = useState<Category[]>([]);
   const [selectedDiffs, setSelectedDiffs] = useState<Difficulty[]>([]);
   const [selectedGoals, setSelectedGoals] = useState<ClimaxGoal[]>([]);
@@ -57,11 +61,11 @@ const SetupScreen: React.FC<{
   const allGoals: ClimaxGoal[] = ['Intimacy', 'Deep Penetration', 'Clitoral', 'Visual', 'G-Spot', 'Power', 'Oral Pleasure', 'Control'];
   const durationOptions = [5, 10, 15, 20];
 
-  const isValid = selectedCats.length > 0;
+  const isValid = selectedCats.length > 0 || selectedDiffs.length > 0 || selectedGoals.length > 0;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-brand-dark text-white max-w-lg mx-auto text-center">
-      <div className="mb-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-brand-dark text-white max-w-lg mx-auto text-center relative">
+      <div className="mb-6 z-10">
         <i className="fas fa-scroll text-5xl text-brand-rose mb-4 animate-pulse inline-block"></i>
         <h1 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-brand-rose to-brand-gold tracking-tight">
           Sutra Quest
@@ -69,7 +73,7 @@ const SetupScreen: React.FC<{
         <p className="text-slate-400 text-sm mt-2">Choose your path to pleasure.</p>
       </div>
 
-      <div className="w-full space-y-8 overflow-y-auto max-h-[70vh] px-1 pb-4 scrollbar-thin scrollbar-thumb-slate-700">
+      <div className="w-full space-y-8 overflow-y-auto max-h-[70vh] px-1 pb-4 scrollbar-thin scrollbar-thumb-slate-700 z-10">
         
         {/* Duration */}
         <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
@@ -157,15 +161,20 @@ const SetupScreen: React.FC<{
 
       <button
         onClick={handleStart}
-        disabled={!isValid}
-        className={`w-full py-4 rounded-xl font-bold text-lg mt-6 transition-all duration-300 flex items-center justify-center gap-2 shadow-xl ${
+        className={`w-full py-4 rounded-xl font-bold text-lg mt-6 transition-all duration-300 flex items-center justify-center gap-2 shadow-xl z-10 ${
           isValid
             ? 'bg-gradient-to-r from-brand-rose to-purple-600 text-white hover:scale-[1.02]'
-            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+            : 'bg-slate-800 text-slate-600'
         }`}
       >
-        Begin Quest <i className="fas fa-dragon"></i>
+        {isValid ? (
+            <>Begin Quest <i className="fas fa-dragon"></i></>
+        ) : (
+            <>Explore All <i className="fas fa-dice"></i></>
+        )}
       </button>
+
+      <Oracle currentPositions={currentPositions} onNewPosition={onNewPosition} />
     </div>
   );
 };
@@ -221,6 +230,11 @@ const ActiveSession: React.FC<{
 
   return (
     <div className="min-h-screen flex flex-col bg-brand-dark text-white relative overflow-hidden">
+      {/* Dynamic Art Background */}
+      <div className="absolute inset-0 z-0 opacity-40">
+        <PositionArt category={position.category} difficulty={position.difficulty} name={position.name} />
+      </div>
+
       {/* Progress Bar */}
       <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-800 z-30">
         <div 
@@ -234,7 +248,7 @@ const ActiveSession: React.FC<{
         <button onClick={onStop} className="text-slate-400 hover:text-white flex items-center gap-2 text-sm font-medium">
           <i className="fas fa-times"></i> End
         </button>
-        <div className="font-mono text-2xl font-bold text-brand-gold tracking-widest tabular-nums">
+        <div className="font-mono text-2xl font-bold text-brand-gold tracking-widest tabular-nums shadow-black drop-shadow-md">
           {formatTime(timeLeft)}
         </div>
       </div>
@@ -245,25 +259,38 @@ const ActiveSession: React.FC<{
           
           <div className="space-y-3 w-full">
             <div className="flex justify-between items-center w-full px-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white border border-white/30 bg-black/30 px-2 py-0.5 rounded backdrop-blur">
                   {position.category}
                 </span>
                 {renderIntensity(position.intensity)}
             </div>
             
-            <h2 className="text-4xl font-extrabold text-white leading-tight drop-shadow-xl">
+            <h2 className="text-4xl font-extrabold text-white leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
               {position.name}
             </h2>
           </div>
 
-          <div className="w-full bg-slate-800/50 rounded-xl p-5 text-left border border-slate-700/50">
-             <h3 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+          <div className="w-full relative rounded-xl overflow-hidden shadow-2xl border-2 border-white/10 group">
+             <img 
+                src={position.imageUrl} 
+                alt={position.name}
+                className="w-full h-64 object-cover"
+                onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://placehold.co/600x400/1e293b/FFF?text=${encodeURIComponent(position.name)}`;
+                }}
+             />
+             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity"></div>
+          </div>
+
+          <div className="w-full bg-slate-900/80 backdrop-blur-md rounded-xl p-5 text-left border border-slate-700/50 shadow-xl">
+             <h3 className="text-xs font-bold text-brand-gold uppercase mb-3 flex items-center gap-2">
                <i className="fas fa-list-ol"></i> Instructions
              </h3>
              <ol className="space-y-4">
                {position.instructions.map((step, idx) => (
-                 <li key={idx} className="flex gap-3 text-slate-300 text-sm leading-relaxed">
-                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-slate-700 text-brand-gold text-xs flex items-center justify-center font-bold mt-0.5">
+                 <li key={idx} className="flex gap-3 text-slate-200 text-sm leading-relaxed">
+                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-slate-700 text-brand-gold text-xs flex items-center justify-center font-bold mt-0.5 shadow-inner">
                      {idx + 1}
                    </span>
                    {step}
@@ -272,20 +299,20 @@ const ActiveSession: React.FC<{
              </ol>
           </div>
 
-          <p className="text-sm italic text-slate-400">
+          <p className="text-sm italic text-slate-300 bg-black/40 p-3 rounded-lg backdrop-blur-sm">
             "{position.description}"
           </p>
 
           <div className="flex flex-wrap justify-center gap-2">
              {position.tags.map(t => (
-                 <span key={t} className="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-500">#{t}</span>
+                 <span key={t} className="text-[10px] bg-slate-800/80 border border-slate-600 px-2 py-1 rounded text-slate-400">#{t}</span>
              ))}
           </div>
         </div>
       </div>
 
       {/* Controls Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-30 bg-gradient-to-t from-brand-dark via-brand-dark to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-30 bg-gradient-to-t from-brand-dark via-brand-dark/95 to-transparent">
         <div className="flex gap-4 max-w-md mx-auto">
             <button 
                 onClick={() => setIsPaused(!isPaused)}
@@ -351,6 +378,7 @@ const CompletionScreen: React.FC<{
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('SETUP');
+  const [allPositions, setAllPositions] = useState<Position[]>(INITIAL_POSITIONS);
   const [playlist, setPlaylist] = useState<Position[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [sessionDuration, setSessionDuration] = useState(10);
@@ -455,7 +483,7 @@ const App: React.FC = () => {
     
     // Use all positions as the pool for a fresh start
     const candidates = getPaddedCandidates(
-        INITIAL_POSITIONS,
+        allPositions,
         (p) => {
             const matchesCategory = filters.categories.length === 0 || filters.categories.includes(p.category);
             const matchesDiff = filters.difficulties.length === 0 || filters.difficulties.includes(p.difficulty);
@@ -510,7 +538,7 @@ const App: React.FC = () => {
     }
 
     // 1. Identify unplayed positions available
-    const unplayedPool = INITIAL_POSITIONS.filter(p => !playedIds.has(p.id));
+    const unplayedPool = allPositions.filter(p => !playedIds.has(p.id));
 
     // 2. If completely out of unique positions in the entire deck, reset history
     if (unplayedPool.length === 0) { 
@@ -551,9 +579,19 @@ const App: React.FC = () => {
     }
   };
 
+  const handleNewPosition = (pos: Position) => {
+    setAllPositions(prev => [...prev, pos]);
+  };
+
   return (
     <div className="antialiased">
-      {appState === 'SETUP' && <SetupScreen onStart={handleStart} />}
+      {appState === 'SETUP' && (
+        <SetupScreen 
+          onStart={handleStart} 
+          currentPositions={allPositions}
+          onNewPosition={handleNewPosition}
+        />
+      )}
       
       {appState === 'ACTIVE' && playlist[currentIndex] && (
         <ActiveSession 
