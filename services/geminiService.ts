@@ -6,7 +6,7 @@ import { Position, Difficulty, Category, ClimaxGoal } from "../types";
 const API_KEY = "AIzaSyDH8KwQgU3k1qsPcObsy38eHq4pP7jaUZ4"; 
 // ---------------------
 
-cconstonst generateId = () => `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+const generateId = () => `pos-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export const generatePositionImage = async (name: string, baseDescription: string): Promise<string | null> => {
   if (!API_KEY || API_KEY.includes("INSERT_YOUR")) {
@@ -96,7 +96,18 @@ export const suggestPosition = async (mood: string, currentPositions: Position[]
       }
     });
 
-    const textData = textResponse.text ? JSON.parse(textResponse.text) : null;
+    let textData = null;
+    try {
+      if (textResponse.text) {
+        // Attempt to clean markdown if present (e.g. ```json ... ```)
+        const cleanText = textResponse.text.replace(/```json\n?|\n?```/g, '').trim();
+        textData = JSON.parse(cleanText);
+      }
+    } catch (parseError) {
+      console.error("JSON Parse Error:", parseError, textResponse.text);
+      return null;
+    }
+
     if (!textData) return null;
 
     // 2. Generate Image based on text details
